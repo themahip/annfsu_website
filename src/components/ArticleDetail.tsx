@@ -46,10 +46,6 @@ const ArticleDetail = () => {
     }
   };
 
-  const getImageUrl = (filename: string) => {
-    return `${API_BASE_URL}/uploads/${filename}`;
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -102,7 +98,7 @@ const ArticleDetail = () => {
             {article.images && article.images.length > 0 ? (
               <div className="aspect-w-16 aspect-h-9 mb-6">
                 <img
-                  src={getImageUrl(article.images[0])}
+                  src={article.images[0]}
                   alt={article.title}
                   className="w-full h-full object-cover rounded-lg"
                 />
@@ -124,7 +120,7 @@ const ArticleDetail = () => {
                   {article.images.slice(1).map((image, index) => (
                     <div key={index} className="aspect-w-1 aspect-h-1">
                       <img
-                        src={getImageUrl(image)}
+                        src={image}
                         alt={`${article.title} - Image ${index + 2}`}
                         className="w-full h-full object-cover rounded-lg"
                       />

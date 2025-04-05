@@ -1,58 +1,41 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
 const newsController = require('../controllers/newsController');
+const multer = require('multer');
+const path = require('path');
 
-// Configure multer for file uploads
+// Configure multer for temporary storage
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '..', 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
   },
-  filename: (req, file, cb) => {
-    // Create a clean filename
+  filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, uniqueSuffix + ext);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
 
+// File filter for images
 const fileFilter = (req, file, cb) => {
-  // Accept images only
-  if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/i)) {
-    return cb(new Error('Only image files are allowed!'), false);
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Not an image! Please upload only images.'), false);
   }
-  cb(null, true);
 };
 
-const upload = multer({ 
-  storage,
-  fileFilter,
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   }
 });
 
-// Modify file paths before passing to controller
-const processUpload = (req, res, next) => {
-  if (req.files) {
-    // Store only the filenames instead of full paths
-    req.files = req.files.map(file => ({
-      ...file,
-      filename: file.filename
-    }));
-  }
-  next();
-};
-
+// Routes
 router.get('/', newsController.getAllNews);
-router.post('/', upload.array('images'), processUpload, newsController.createNews);
-router.put('/:id', upload.array('images'), processUpload, newsController.updateNews);
+router.post('/', upload.array('images', 5), newsController.createNews);
+router.put('/:id', upload.array('images', 5), newsController.updateNews);
 router.delete('/:id', newsController.deleteNews);
 
 module.exports = router;

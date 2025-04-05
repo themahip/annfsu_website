@@ -50,7 +50,7 @@ const News = () => {
       {images.map((image, index) => (
         <img
           key={index}
-          src={`../../backend/uploads/${image}`}
+          src={`${image}`}
           alt={`News image ${index + 1}`}
           className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => setSelectedImage(image)} // set just the filename
@@ -67,7 +67,7 @@ const News = () => {
   };
 
   const getImageUrl = (filename: string) => {
-    return `../../backend/uploads/${filename}`;
+    return `${filename}`;
   };
 
   if (loading) {
@@ -178,7 +178,7 @@ const News = () => {
             <X className="h-8 w-8" />
           </button>
           <img
-            src={`../../backend/uploads/${selectedImage}`}
+            src={`${selectedImage}`}
             alt="Full size"
             className="max-w-full max-h-[90vh] object-contain"
             onClick={(e) => e.stopPropagation()}

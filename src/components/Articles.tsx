@@ -37,10 +37,6 @@ const Articles = () => {
     }
   };
 
-  const getImageUrl = (filename: string) => {
-    return `${API_BASE_URL}/uploads/${filename}`;
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -85,7 +81,7 @@ const Articles = () => {
               <div className="aspect-w-16 aspect-h-9">
                 {article.images && article.images.length > 0 ? (
                   <img
-                    src={getImageUrl(article.images[0])}
+                    src={article.images[0]}
                     alt={article.title}
                     className="w-full h-48 sm:h-56 object-cover"
                   />

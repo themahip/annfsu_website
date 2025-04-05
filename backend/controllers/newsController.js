@@ -1,4 +1,5 @@
 const News = require('../models/News');
+const cloudinary = require('../config/cloudinary');
 const fs = require('fs');
 const path = require('path');
 
@@ -9,95 +10,115 @@ const getImageUrl = (imagePath) => {
   return `http://localhost:8000/uploads/${cleanPath}`;
 };
 
+// Get all news
 exports.getAllNews = async (req, res) => {
   try {
     const news = await News.find().sort({ date: -1 });
     res.json(news);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching news' });
+    res.status(500).json({ message: error.message });
   }
 };
 
+// Create news
 exports.createNews = async (req, res) => {
   try {
     const { title, date, description, fullContent } = req.body;
-    const imagePaths = req.files.map(file => file.filename);
     
+    // Upload images to Cloudinary
+    const imageUrls = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: 'annfsu/news',
+          resource_type: 'auto'
+        });
+        imageUrls.push(result.secure_url);
+        
+        // Delete the temporary file
+        fs.unlinkSync(file.path);
+      }
+    }
+
     const news = new News({
       title,
       date,
       description,
       fullContent,
-      images: imagePaths
+      images: imageUrls
     });
-    
-    await news.save();
-    res.status(201).json(news);
+
+    const savedNews = await news.save();
+    res.status(201).json(savedNews);
   } catch (error) {
-    res.status(500).json({ error: 'Error creating news' });
+    res.status(400).json({ message: error.message });
   }
 };
 
+// Update news
 exports.updateNews = async (req, res) => {
   try {
     const { title, date, description, fullContent } = req.body;
     const news = await News.findById(req.params.id);
-    
+
     if (!news) {
-      return res.status(404).json({ error: 'News not found' });
+      return res.status(404).json({ message: 'News not found' });
     }
 
-    // Delete old images if new ones are uploaded
+    // Delete old images from Cloudinary if new images are uploaded
     if (req.files && req.files.length > 0) {
-      news.images.forEach(filename => {
-        const filepath = path.join(__dirname, '..', 'uploads', filename);
-        try {
-          if (fs.existsSync(filepath)) {
-            fs.unlinkSync(filepath);
-          }
-        } catch (err) {
-          console.error('Error deleting file:', err);
-        }
-      });
+      // Upload new images to Cloudinary
+      const newImageUrls = [];
+      for (const file of req.files) {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: 'annfsu/news',
+          resource_type: 'auto'
+        });
+        newImageUrls.push(result.secure_url);
+        
+        // Delete the temporary file
+        fs.unlinkSync(file.path);
+      }
+
+      // Delete old images from Cloudinary
+      for (const oldImageUrl of news.images) {
+        const publicId = oldImageUrl.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(`annfsu/news/${publicId}`);
+      }
+
+      news.images = newImageUrls;
     }
 
-    const imagePaths = req.files ? req.files.map(file => file.filename) : news.images;
-    
     news.title = title;
     news.date = date;
     news.description = description;
     news.fullContent = fullContent;
-    news.images = imagePaths;
-    
-    await news.save();
-    res.json(news);
+
+    const updatedNews = await news.save();
+    res.json(updatedNews);
   } catch (error) {
-    res.status(500).json({ error: 'Error updating news' });
+    res.status(400).json({ message: error.message });
   }
 };
 
+// Delete news
 exports.deleteNews = async (req, res) => {
   try {
     const news = await News.findById(req.params.id);
+
     if (!news) {
-      return res.status(404).json({ error: 'News not found' });
+      return res.status(404).json({ message: 'News not found' });
     }
 
-    // Delete associated images
-    news.images.forEach(filename => {
-      const filepath = path.join(__dirname, '..', 'uploads', filename);
-      try {
-        if (fs.existsSync(filepath)) {
-          fs.unlinkSync(filepath);
-        }
-      } catch (err) {
-        console.error('Error deleting file:', err);
-      }
-    });
+    // Delete images from Cloudinary
+    for (const imageUrl of news.images) {
+      const publicId = imageUrl.split('/').pop().split('.')[0];
+      await cloudinary.uploader.destroy(`annfsu/news/${publicId}`);
+    }
 
-    await news.deleteOne();
+    await News.findByIdAndDelete(req.params.id);
     res.json({ message: 'News deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Error deleting news' });
+    res.status(500).json({ message: error.message });
   }
 }; 
